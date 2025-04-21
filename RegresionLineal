@@ -1,0 +1,142 @@
+# %%
+# Importar las librerías necesarias
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Cargar el dataset de precios de viviendas en EE.UU.
+# Intenta con esta ruta modificada para tu sistema
+casas = pd.read_csv("C:/Users/txema/Downloads/archive/USA_Housing.csv")
+
+# Mostrar las primeras filas del DataFrame para inspección
+print("Primeras filas del dataset:")
+print(casas.head())
+
+# Mostrar información general sobre el DataFrame, como tipos de datos y valores no nulos
+print("\nInformación del dataset:")
+print(casas.info())
+
+# Mostrar estadísticas descriptivas del DataFrame
+print("\nEstadísticas descriptivas del dataset:")
+print(casas.describe())
+
+# Mostrar los nombres de las columnas del DataFrame
+print("\nNombre de las columnas:")
+print(casas.columns)
+
+# Mostrar la forma (número de filas y columnas) del DataFrame
+print("\nForma del dataset:")
+print(casas.shape)
+
+# Visualizar la distribución de la variable objetivo 'Price'
+sns.displot(casas['Price'])
+plt.title('Distribución del Precio de las Viviendas')
+plt.xlabel('Precio')
+plt.ylabel('Frecuencia')
+plt.show()
+
+# %%
+# Importar las herramientas necesarias para la división de datos y el modelo de regresión lineal
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+
+# Mostrar las primeras filas del DataFrame nuevamente (por si se reinició el entorno)
+print("\nPrimeras filas del dataset (revisión):")
+print(casas.head())
+
+# %%
+# Mostrar las columnas del DataFrame para recordar las variables disponibles
+print("\nColumnas del dataset (revisión):")
+print(casas.columns)
+
+# %%
+# Definir las variables predictoras (X) y la variable objetivo (y)
+# Seleccionamos las columnas que creemos que influyen en el precio de la vivienda
+x = casas[['Avg. Area Income', 'Avg. Area House Age', 'Avg. Area Number of Rooms', 'Avg. Area Number of Bedrooms', 'Area Population']]
+y = casas['Price']
+
+# %%
+# Dividir los datos en conjuntos de entrenamiento y prueba
+# Usamos el 30% de los datos para prueba y fijamos un estado aleatorio para la reproducibilidad
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
+
+# %%
+# Mostrar el conjunto de entrenamiento de las variables predictoras
+print("\nConjunto de entrenamiento de las variables predictoras (X_train):")
+print(x_train.head())
+
+# %%
+# Mostrar el conjunto de prueba de las variables predictoras
+print("\nConjunto de prueba de las variables predictoras (X_test):")
+print(x_test.head())
+
+# %%
+# Crear una instancia del modelo de regresión lineal
+lrm = LinearRegression()
+
+# Entrenar el modelo utilizando el conjunto de entrenamiento
+lrm.fit(x_train, y_train)
+
+# Importar la librería para métricas de evaluación (aunque se volverá a importar más adelante)
+from sklearn import metrics
+
+# %%
+# Realizar predicciones sobre el conjunto de prueba
+predicciones = lrm.predict(x_test)
+print("\nPredicciones del modelo sobre el conjunto de prueba:")
+print(predicciones[:5]) # Mostrar solo las primeras 5 predicciones para no saturar la salida
+
+# %%
+# Mostrar los valores reales de la variable objetivo en el conjunto de prueba
+print("\nValores reales del precio de las viviendas en el conjunto de prueba (y_test):")
+print(y_test.head()) # Mostrar solo las primeras 5 para comparar con las predicciones
+
+# %%
+# Crear un diagrama de dispersión para comparar los valores reales con las predicciones
+plt.figure(figsize=(8, 6))
+plt.scatter(y_test, predicciones)
+plt.xlabel('Valores reales del Precio')
+plt.ylabel('Predicciones del Precio')
+plt.title('Valores reales vs Predicciones del Precio de la Vivienda')
+plt.grid(True)
+plt.show()
+
+# %%
+# Visualizar la distribución de los residuos (la diferencia entre los valores reales y las predicciones)
+sns.displot((y_test - predicciones), bins=50, kde=True)
+plt.xlabel('Residuos (y_test - Predicciones)')
+plt.ylabel('Frecuencia')
+plt.title('Distribución de los Residuos')
+plt.show()
+
+# %% [markdown]
+# ### Evaluación del Modelo
+#
+# A continuación, calculamos algunas métricas comunes para evaluar el rendimiento del modelo de regresión lineal.
+#
+# **MAE (Mean Absolute Error)**: Media del valor absoluto de los errores. Mide la magnitud promedio de los errores en un conjunto de predicciones, sin considerar su dirección.
+#
+# **MSE (Mean Squared Error)**: Media de los errores al cuadrado. Penaliza más los errores grandes que el MAE.
+#
+# **RMSE (Root Mean Squared Error)**: Raíz cuadrada del MSE. Tiene las mismas unidades que la variable objetivo, lo que facilita su interpretación.
+
+# %%
+# Importar la librería de métricas de scikit-learn
+from sklearn import metrics
+
+# Calcular el Error Absoluto Medio (MAE)
+mae = metrics.mean_absolute_error(y_test, predicciones)
+print(f"Error Absoluto Medio (MAE): {mae:.2f}")
+
+# Calcular el Error Cuadrático Medio (MSE)
+mse = metrics.mean_squared_error(y_test, predicciones)
+print(f"Error Cuadrático Medio (MSE): {mse:.2f}")
+
+# Calcular la Raíz del Error Cuadrático Medio (RMSE)
+rmse = np.sqrt(mse)
+print(f"Raíz del Error Cuadrático Medio (RMSE): {rmse:.2f}")
+
+# ¡Listo para subir a GitHub! Este script contiene la carga de datos, exploración básica,
+# división de datos, entrenamiento de un modelo de regresión lineal y la evaluación de su rendimiento
+# mediante métricas comunes y visualizaciones.
