@@ -1,0 +1,151 @@
+
+
+# 📱 Contexto
+# Eres parte de un equipo de análisis de una startup que lanza apps móviles.
+# Se te ha asignado la tarea de construir un modelo que pueda predecir si una app será exitosa o no
+# en función de sus métricas iniciales.
+# La empresa ha recopilado datos de otras apps anteriores, tanto exitosas como fallidas,
+# y quiere automatizar este análisis con Machine Learning.
+
+# 🎯 Objetivo
+# Crea un sistema en Python que permita:
+# - Representar los datos de una app.
+# - Preparar un conjunto de datos a partir de múltiples apps.
+# - Entrenar un modelo de regresión logística con scikit-learn.
+# - Predecir si una app será exitosa.
+# - De forma opcional, mostrar la probabilidad de éxito.
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+
+class App:
+    """Representa una app móvil con sus características."""
+    def __init__(self, app_name, monthly_users, avg_session_length, retention_rate, social_shares, success=None):
+        """
+        Inicializa una instancia de la clase App.
+
+        Args:
+            app_name (str): Nombre de la aplicación.
+            monthly_users (int): Número de usuarios mensuales.
+            avg_session_length (float): Duración media de las sesiones en minutos.
+            retention_rate (float): Tasa de retención de usuarios (entre 0 y 1).
+            social_shares (int): Número de veces que se ha compartido en redes sociales.
+            success (int, opcional): Etiqueta de éxito (1) o fracaso (0). Defaults to None para nuevas apps.
+        """
+        self.app_name = app_name
+        self.monthly_users = monthly_users
+        self.avg_session_length = avg_session_length
+        self.retention_rate = retention_rate
+        self.social_shares = social_shares
+        self.success = success
+
+    def to_features(self):
+        """
+        Devuelve una lista de características numéricas de la app.
+
+        Returns:
+            list: Lista con los valores de monthly_users, avg_session_length, retention_rate y social_shares.
+        """
+        return [self.monthly_users, self.avg_session_length, self.retention_rate, self.social_shares]
+
+class AppDataset:
+    """Representa un conjunto de datos de apps."""
+    def __init__(self, apps):
+        """
+        Inicializa una instancia de la clase AppDataset.
+
+        Args:
+            apps (list): Lista de objetos App.
+        """
+        self.apps = apps
+
+    def get_feature_matrix(self):
+        """
+        Devuelve una matriz de características a partir de la lista de apps.
+
+        Returns:
+            list: Lista de listas, donde cada lista interna representa las características de una app.
+        """
+        return [app.to_features() for app in self.apps]
+
+    def get_target_vector(self):
+        """
+        Devuelve un vector de etiquetas (success) para las apps con etiqueta conocida.
+
+        Returns:
+            list: Lista con los valores de éxito (1 o 0) de las apps que tienen esta información.
+        """
+        return [app.success for app in self.apps if app.success is not None]
+
+class SuccessPredictor:
+    """Encargado de entrenar y usar el modelo de regresión logística."""
+    def __init__(self):
+        """
+        Inicializa una instancia de la clase SuccessPredictor.
+        Crea un modelo de regresión logística y un escalador estándar.
+        """
+        self.model = LogisticRegression()
+        self.scaler = StandardScaler()
+
+    def train(self, dataset):
+        """
+        Entrena el modelo de regresión logística utilizando un AppDataset.
+
+        Args:
+            dataset (AppDataset): Objeto AppDataset que contiene los datos de entrenamiento.
+        """
+        features = dataset.get_feature_matrix()
+        target = dataset.get_target_vector()
+        # Comprueba si hay datos de éxito para entrenar el modelo
+        if not target:
+            print("Advertencia: No hay datos de éxito para entrenar el modelo.")
+            return
+        # Escala las características utilizando StandardScaler
+        scaled_features = self.scaler.fit_transform(features)
+        # Entrena el modelo de regresión logística con las características escaladas y las etiquetas de éxito
+        self.model.fit(scaled_features, target)
+
+    def predict(self, app):
+        """
+        Predice si una app será exitosa (1) o no (0).
+
+        Args:
+            app (App): Objeto App para el cual se quiere realizar la predicción.
+
+        Returns:
+            int: 1 si se predice éxito, 0 si se predice fracaso.
+        """
+        # Obtiene las características de la app y las redimensiona
+        features = np.array(app.to_features()).reshape(1, -1)
+        # Escala las características utilizando el mismo escalador que se usó para el entrenamiento
+        scaled_features = self.scaler.transform(features)
+        # Realiza la predicción con el modelo entrenado y devuelve el resultado
+        return self.model.predict(scaled_features)[0]
+
+    def predict_proba(self, app):
+        """
+        Devuelve la probabilidad estimada de éxito de la app.
+
+        Args:
+            app (App): Objeto App para el cual se quiere obtener la probabilidad de éxito.
+
+        Returns:
+            float: Probabilidad de éxito (valor entre 0 y 1).
+        """
+        # Obtiene las características de la app y las redimensiona
+        features = np.array(app.to_features()).reshape(1, -1)
+        # Escala las características utilizando el mismo escalador que se usó para el entrenamiento
+        scaled_features = self.scaler.transform(features)
+        # Obtiene las probabilidades de la app perteneciendo a cada clase
+        probability = self.model.predict_proba(scaled_features)[0][1]
+        return probability
+
+# Ejemplo de uso
+# Datos de entrenamiento: lista de objetos App con información de apps anteriores y su éxito
+apps = [
+    App("FastChat", 10000, 12.5, 0.65, 1500, 1),
+    App("FitTrack", 500, 5.0, 0.2, 50, 0),
+    App("GameHub", 15000, 25.0, 0.75, 30
