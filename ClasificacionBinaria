@@ -1,0 +1,50 @@
+##Clasificación Binaria
+##Supongamos que tienes un conjunto de datos que contiene información sobre pacientes y deseas predecir si un paciente tiene una enfermedad (1) o no (0) en función de algunas características médicas, como la edad y los niveles de colesterol.
+
+## Tu tarea es desarrollar una función llamada regresion_logistica que tome estos datos como entrada y ajuste un modelo de regresión logística para la clasificación binaria.
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+def regresion_logistica(datos):
+    """
+    Entrena un modelo de regresión logística para clasificación binaria.
+
+    Args:
+        datos (pd.DataFrame): DataFrame con las características y la variable objetivo.
+                               La variable objetivo debe llamarse 'Enfermedad' y contener valores 0 o 1.
+                               Las características deben ser las columnas restantes.
+
+    Returns:
+        sklearn.linear_model.LogisticRegression: Modelo de regresión logística entrenado.
+    """
+    # Separamos las características (X) de la variable objetivo (y)
+    X = datos.drop('Enfermedad', axis=1)
+    y = datos['Enfermedad']
+
+    # Inicializamos el modelo de regresión logística
+    modelo = LogisticRegression()
+
+    # Entrenamos el modelo con todos los datos proporcionados
+    # En un escenario real, sería mejor dividir los datos en entrenamiento y prueba
+    # para evaluar el rendimiento del modelo en datos no vistos.
+    modelo.fit(X, y)
+
+    return modelo
+
+# Ejemplo de uso con datos de pacientes
+data = {
+    'Edad': [50, 35, 65, 28, 60],
+    'Colesterol': [180, 150, 210, 130, 190],
+    'Enfermedad': [1, 0, 1, 0, 1]
+}
+
+df = pd.DataFrame(data)
+modelo_regresion_logistica = regresion_logistica(df)
+
+# Estimaciones de clasificación binaria para nuevos datos
+nuevos_datos = pd.DataFrame({'Edad': [45, 55], 'Colesterol': [170, 200]})
+estimaciones_clasificacion = modelo_regresion_logistica.predict(nuevos_datos)
+print("Estimaciones de Clasificación:")
+print(estimaciones_clasificacion)
