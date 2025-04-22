@@ -1,0 +1,186 @@
+# %% [markdown]
+# Ejercicio Regresión logística.
+
+# %%
+# Importamos las librerías necesarias para el análisis de datos y visualización.
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Cargamos el dataset de entrenamiento desde un archivo CSV.
+entrenamiento = pd.read_csv('C:\\Users\\txema\\Downloads\\titanic\\train.csv')
+# Mostramos las primeras filas del DataFrame para inspeccionar los datos.
+print(entrenamiento.head())
+# Verificamos si hay valores nulos en el DataFrame (devuelve True para celdas nulas).
+entrenamiento.isnull()
+# Creamos un mapa de calor para visualizar la ubicación de los valores nulos.
+sns.heatmap(entrenamiento.isnull())
+
+# %%
+# Creamos un gráfico de barras para visualizar la distribución de la variable 'Survived'.
+sns.countplot(x='Survived', data=entrenamiento, palette='hsv')
+
+
+# %%
+# Creamos un gráfico de barras para visualizar la distribución de 'Survived' segregado por 'Sex'.
+sns.countplot(x='Survived', data=entrenamiento, hue="Sex")
+
+# %%
+# Mostramos los nombres de las columnas del DataFrame.
+entrenamiento.columns
+
+# %%
+# Creamos un gráfico de barras para visualizar la distribución de 'Survived' segregado por 'Pclass' (clase del pasajero).
+sns.countplot(x='Survived', data=entrenamiento, hue="Pclass")
+
+# %%
+# Creamos un histograma para visualizar la distribución de la variable 'Age', eliminando los valores nulos.
+sns.displot(entrenamiento['Age'].dropna(), kde=False, color='blue', bins=30)
+
+# %%
+# Otra forma de crear un histograma para la variable 'Age'.
+entrenamiento["Age"].plot.hist(bins=30)
+
+# %%
+# Creamos un histograma para visualizar la distribución de la variable 'SibSp' (número de hermanos/cónyuges a bordo).
+entrenamiento["SibSp"].plot.hist(bins=30)
+
+# %% [markdown]
+# Limpieza de datos
+
+# %%
+# Creamos un diagrama de caja para visualizar la distribución de 'Age' en función de 'Pclass'.
+sns.boxplot(x='Pclass', y='Age', data=entrenamiento)
+
+# %%
+# Definimos una función para imputar los valores nulos en la columna 'Age' basándose en la 'Pclass'.
+def edad_media (columnas):
+    edad= columnas[0]
+    clase= columnas[1]
+    if pd.isnull(edad):
+        if clase == 1:
+            return 38
+        elif clase == 2:
+            return 30
+        elif clase == 3:
+            return 25
+    else:
+        return edad
+   
+
+# %%
+# Aplicamos la función 'edad_media' para llenar los valores nulos en la columna 'Age'.
+entrenamiento["Age"]= entrenamiento[["Age", "Pclass"]].apply(edad_media, axis=1)
+
+# %%
+# Verificamos nuevamente si hay valores nulos en el DataFrame.
+entrenamiento.isnull()
+# Visualizamos los valores nulos con un mapa de calor después de la imputación en 'Age'.
+sns.heatmap(entrenamiento.isnull())
+
+# %%
+
+
+# %%
+# Eliminamos la columna 'Cabin' ya que tiene muchos valores nulos.
+entrenamiento.drop('Cabin', axis=1, inplace=True)
+
+# %%
+# Verificamos nuevamente los valores nulos con un mapa de calor después de eliminar 'Cabin'.
+sns.heatmap(entrenamiento.isnull())
+
+# %%
+# Mostramos las primeras filas del DataFrame después de la limpieza inicial.
+entrenamiento.head()
+
+# %% [markdown]
+# Dejar solo las columnas numéricas para realizar el entrenamiento
+
+# %%
+# Eliminamos las columnas 'Name', 'Ticket' y 'PassengerId' que no son relevantes para el modelo de regresión logística.
+entrenamiento.drop('Name', axis=1, inplace=True)
+entrenamiento.drop('Ticket', axis=1, inplace=True)
+entrenamiento.drop('PassengerId', axis=1, inplace=True)
+
+
+# %%
+# Mostramos las primeras filas del DataFrame después de eliminar las columnas no numéricas iniciales.
+entrenamiento.head()
+
+# %%
+# Convertimos la columna categórica 'Sex' en variables dummy (codificación one-hot), eliminando la primera columna para evitar multicolinealidad.
+sexo = pd.get_dummies(entrenamiento["Sex"],drop_first=True)
+# Concatenamos las nuevas columnas dummy al DataFrame original.
+entrenamiento = pd.concat([entrenamiento, sexo], axis=1)
+# Eliminamos la columna original 'Sex'.
+entrenamiento.drop("Sex", axis=1, inplace=True)
+
+# %%
+# Mostramos las primeras filas del DataFrame después de la codificación de la variable 'Sex'.
+entrenamiento.head()
+
+# %%
+# Convertimos la columna categórica 'Embarked' en variables dummy, eliminando la primera columna.
+puerto= pd.get_dummies(entrenamiento["Embarked"],drop_first=True)
+# Concatenamos las nuevas columnas dummy al DataFrame.
+entrenamiento = pd.concat([entrenamiento, puerto], axis=1)
+# Eliminamos la columna original 'Embarked'.
+entrenamiento.drop("Embarked", axis=1, inplace=True)
+
+# %%
+# Mostramos las primeras filas del DataFrame después de la codificación de la variable 'Embarked'.
+entrenamiento.head()
+
+# %%
+# Eliminamos la columna dummy 'male' (ya que la presencia de 'female' es suficiente para codificar el género).
+entrenamiento.drop("male", axis=1, inplace=True)
+
+# %%
+# Mostramos las primeras filas del DataFrame final antes del entrenamiento del modelo.
+entrenamiento.head()
+
+# %% [markdown]
+# Entrenamiento del modelo
+
+# %%
+# Definimos la variable objetivo (y) como la columna 'Survived'.
+y= entrenamiento["Survived"]
+# Definimos las variables predictoras (x) como el resto de las columnas.
+x= entrenamiento.drop("Survived", axis=1)
+# Mostramos las primeras filas de las variables predictoras.
+print(x.head())
+# Mostramos las primeras filas de la variable objetivo.
+print(y.head())
+
+# %%
+# Importamos la función para dividir el dataset en conjuntos de entrenamiento y prueba.
+from sklearn.model_selection import train_test_split
+# Dividimos los datos en conjuntos de entrenamiento (70%) y prueba (30%).
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.30, random_state=45)
+
+
+# %%
+# Importamos las clases necesarias para el modelo de regresión logística.
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+# Inicializamos el modelo de regresión logística.
+modelo= LogisticRegression()
+# Entrenamos el modelo utilizando los datos de entrenamiento.
+modelo.fit(x_train, y_train)
+
+# %%
+# Realizamos predicciones sobre el conjunto de prueba.
+predicciones= modelo.predict(x_test)
+# Mostramos las predicciones del modelo.
+print(predicciones)
+
+# %%
+# Importamos las métricas de evaluación para el modelo de clasificación.
+from sklearn.metrics import classification_report
+# Imprimimos el informe de clasificación, que incluye precisión, recall, F1-score y soporte para cada clase.
+print(classification_report(y_test, predicciones))
+# Importamos la matriz de confusión para evaluar el rendimiento del modelo.
+from sklearn.metrics import confusion_matrix
+# Imprimimos la matriz de confusión, que muestra los verdaderos positivos, verdaderos negativos, falsos positivos y falsos negativos.
+print(confusion_matrix(y_test, predicciones))
