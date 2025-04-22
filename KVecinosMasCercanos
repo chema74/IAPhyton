@@ -1,0 +1,52 @@
+import pandas as pd
+from sklearn.neighbors import KNeighborsClassifier
+
+def knn_clasificacion(datos: pd.DataFrame, k: int = 3) -> KNeighborsClassifier:
+    """
+    Crea y entrena un clasificador de k-vecinos más cercanos (KNN) usando scikit-learn.
+
+    Parámetros:
+    - datos: DataFrame con las características en las columnas iniciales y la etiqueta de clase en la última columna.
+    - k: número de vecinos a considerar (por defecto es 3).
+
+    Retorna:
+    - Un objeto KNeighborsClassifier entrenado.
+    """
+    # Separar las características (X) de la variable objetivo (y).
+    # Se asume que las características están en todas las columnas excepto la última,
+    # y la etiqueta de clase se encuentra en la última columna del DataFrame.
+    X = datos.iloc[:, :-1]  # Todas las filas, y todas las columnas excepto la última
+    y = datos.iloc[:, -1]   # Todas las filas, y solo la última columna
+
+    # Crear una instancia del clasificador KNN.
+    # El parámetro 'n_neighbors' se establece con el valor de 'k' proporcionado.
+    modelo = KNeighborsClassifier(n_neighbors=k)
+
+    # Entrenar el modelo KNN utilizando las características (X) y las etiquetas de clase (y).
+    # Durante el entrenamiento, el modelo esencialmente almacena los datos de entrenamiento
+    # y calcula las distancias entre los puntos para futuras predicciones.
+    modelo.fit(X, y)
+
+    # Retornar el modelo KNN entrenado.
+    return modelo
+
+# Ejemplo de uso con el dataset Iris:
+# Para ejecutar este ejemplo, primero asegúrate de tener el archivo 'iris.csv' en el mismo directorio
+# o proporciona la ruta correcta al archivo.
+# data = pd.read_csv('iris.csv')
+#
+# # Llamar a la función para crear y entrenar el modelo KNN con k=3.
+# modelo_knn = knn_clasificacion(data, k=3)
+#
+# # Definir nuevas muestras para las cuales queremos predecir la clase.
+# # Las columnas deben coincidir con las características utilizadas para entrenar el modelo.
+# nuevas_muestras = pd.DataFrame({
+#     'LargoSepalo': [5.1, 6.0, 4.4],
+#     'AnchoSepalo': [3.5, 2.9, 3.2],
+#     'LargoPetalo': [1.4, 4.5, 1.3],
+#     'AnchoPetalo': [0.2, 1.5, 0.2]
+# })
+#
+# # Utilizar el modelo entrenado para predecir la clase de las nuevas muestras.
+# estimaciones = modelo_knn.predict(nuevas_muestras)
+# print("Estimaciones de Clasificación:", estimaciones)
