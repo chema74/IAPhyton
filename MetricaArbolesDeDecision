@@ -1,0 +1,69 @@
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_iris
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import numpy as np
+
+def entrenar_y_evaluar_arbol(X_train, y_train, X_test, y_test):
+    """
+    Entrena un árbol de decisión, realiza predicciones y evalúa su rendimiento.
+
+    Args:
+        X_train (array-like): Datos de entrenamiento (características).
+        y_train (array-like): Etiquetas de entrenamiento.
+        X_test (array-like): Datos de prueba (características).
+        y_test (array-like): Etiquetas reales del conjunto de prueba.
+
+    Returns:
+        dict: Un diccionario que contiene las predicciones, la precisión,
+              la matriz de confusión y el reporte de clasificación.
+    """
+    # Inicializar el clasificador del árbol de decisión con random_state para reproducibilidad
+    arbol = DecisionTreeClassifier(random_state=42)
+
+    # Entrenar el árbol de decisión con los datos de entrenamiento
+    arbol.fit(X_train, y_train)
+
+    # Realizar predicciones en el conjunto de prueba
+    predicciones = arbol.predict(X_test)
+
+    # Calcular la precisión
+    accuracy = accuracy_score(y_test, predicciones)
+
+    # Calcular la matriz de confusión
+    matriz_confusion = confusion_matrix(y_test, predicciones)
+
+    # Generar el reporte de clasificación
+    reporte = classification_report(y_test, predicciones)
+
+    # Devolver un diccionario con los resultados
+    resultados = {
+        'predicciones': predicciones,
+        'accuracy': accuracy,
+        'matriz_confusion': matriz_confusion,
+        'reporte': reporte
+    }
+    return resultados
+
+if __name__ == '__main__':
+    # Cargar el conjunto de datos Iris
+    iris = load_iris()
+    X, y = iris.data, iris.target
+
+    # Dividir los datos en conjuntos de entrenamiento y prueba
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    # Entrenar y evaluar el árbol de decisión
+    resultados = entrenar_y_evaluar_arbol(X_train, y_train, X_test, y_test)
+
+    # Imprimir los resultados
+    print("Predicciones en el conjunto de prueba:", resultados['predicciones'])
+    print("\nPrecisión del modelo:", f"{resultados['accuracy']:.2f}")
+    print("\nMatriz de confusión:\n", resultados['matriz_confusion'])
+    print("\nReporte de clasificación:\n", resultados['reporte'])
+
+    # Asegurar que la precisión sea al menos del 85%
+    if resultados['accuracy'] >= 0.85:
+        print("\n¡La precisión del modelo es igual o superior al 85%!")
+    else:
+        print(f"\nAdvertencia: La precisión del modelo ({resultados['accuracy']:.2f}) es inferior al 85%.")
