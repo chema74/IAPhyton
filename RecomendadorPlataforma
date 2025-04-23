@@ -1,183 +1,161 @@
-from sklearn.tree import DecisionTreeClassifier # Importa la clase para crear modelos de árboles de decisión
-from sklearn.model_selection import train_test_split # Importa la función para dividir datos en entrenamiento y prueba (aunque no se usa explícitamente aquí, es buena práctica para evaluación)
-from sklearn.preprocessing import LabelEncoder # Importa la clase para codificar etiquetas categóricas a numéricas
-import numpy as np # Importa la biblioteca NumPy para trabajar con arrays eficientemente
+from typing import List, Optional
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score
 
+# Clase que representa un proyecto con sus atributos clave
 class Project:
-    """
-    Representa un proyecto con sus características y la plataforma recomendada (si está disponible).
-    """
-    def __init__(self, name, user_interaction_frequency, data_sensitivity, development_complexity,
-                 realtime_required, needs_offline, target_users, recommended_platform=None):
-        """
-        Inicializa un nuevo objeto Project.
-
-        Args:
-            name (str): Nombre del proyecto.
-            user_interaction_frequency (int): Frecuencia de interacción del usuario (escala numérica).
-            data_sensitivity (float): Sensibilidad de los datos (escala numérica).
-            development_complexity (int): Complejidad del desarrollo (escala numérica).
-            realtime_required (bool): Indica si se requiere funcionalidad en tiempo real.
-            needs_offline (bool): Indica si la aplicación necesita funcionar sin conexión.
-            target_users (str): Tipo de usuarios objetivo (e.g., "global", "empresa", "local").
-            recommended_platform (str, optional): Plataforma recomendada para el proyecto
-                                                   ("web", "mobile", "desktop"). Defaults to None.
-        """
+    def __init__(
+        self,
+        name: str,
+        team_size: int,
+        budget_k: float,
+        duration_months: int,
+        realtime_required: bool,
+        needs_offline: bool,
+        target_users: str,
+        recommended_platform: Optional[str] = None
+    ):
+        # Nombre identificador del proyecto
         self.name = name
-        self.user_interaction_frequency = user_interaction_frequency
-        self.data_sensitivity = data_sensitivity
-        self.development_complexity = development_complexity
+        # Tamaño del equipo en número de personas
+        self.team_size = team_size
+        # Presupuesto estimado en miles de dólares
+        self.budget_k = budget_k
+        # Duración prevista del proyecto en meses
+        self.duration_months = duration_months
+        # Si el proyecto requiere procesamiento en tiempo real
         self.realtime_required = realtime_required
+        # Si el proyecto necesita funcionar offline
         self.needs_offline = needs_offline
+        # Tipo de usuarios objetivo: 'local', 'empresa', 'global', etc.
         self.target_users = target_users
+        # Plataforma recomendada: 'web', 'mobile', 'desktop' (solo para datos de entrenamiento)
         self.recommended_platform = recommended_platform
 
-    def __repr__(self):
+    def to_features(self):
         """
-        Devuelve una representación en cadena del objeto Project.
+        Convierte los atributos del proyecto en una lista de características numéricas
+        lista: [team_size, budget_k, duration_months, realtime_required, needs_offline, target_users]
         """
-        return f"Project(name='{self.name}', target='{self.recommended_platform}')"
+        # Convertir booleanos a enteros (0 o 1) para el modelo
+        return [
+            self.team_size,
+            self.budget_k,
+            self.duration_months,
+            int(self.realtime_required),  # True -> 1, False -> 0
+            int(self.needs_offline),      # True -> 1, False -> 0
+            self.target_users,            # Se codificará más adelante con LabelEncoder
+        ]
 
+# Clase para manejar el conjunto de datos de proyectos
 class ProjectDataset:
-    """
-    Contiene una lista de objetos Project y proporciona métodos para extraer datos para el modelo.
-    """
-    def __init__(self, projects):
-        """
-        Inicializa un nuevo objeto ProjectDataset.
-
-        Args:
-            projects (list): Una lista de objetos Project.
-        """
+    def __init__(self, projects: List[Project]):
+        # Lista de instancias Project
         self.projects = projects
+        # Codificador para la variable categórica target_users
+        self.user_encoder = LabelEncoder()
+        # Codificador para la variable objetivo recommended_platform
+        self.platform_encoder = LabelEncoder()
+        
+        # Ajustar los encoders usando los datos disponibles
+        self._fit_encoders()
 
-    def get_features_and_labels(self):
+    def _fit_encoders(self):
         """
-        Extrae las características y las etiquetas (plataforma recomendada) de los proyectos.
-
-        Returns:
-            tuple: Una tupla que contiene dos arrays NumPy:
-                   - features (np.ndarray): Array de características para entrenar el modelo.
-                   - labels (np.ndarray): Array de etiquetas (plataformas recomendadas).
+        Ajusta los LabelEncoders con los valores únicos
+        de target_users y recommended_platform
         """
-        features = []
-        labels = []
-        label_encoder = LabelEncoder() # Inicializa un LabelEncoder para codificar la variable categórica 'target_users'
-        for project in self.projects:
-            features.append([
-                project.user_interaction_frequency,
-                project.data_sensitivity,
-                project.development_complexity,
-                int(project.realtime_required), # Convierte booleano a entero (True -> 1, False -> 0)
-                int(project.needs_offline),    # Convierte booleano a entero (True -> 1, False -> 0)
-                project.target_users          # Variable categórica a ser codificada
-            ])
-            if project.recommended_platform:
-                labels.append(project.recommended_platform)
+        # Extraer todos los valores de usuarios objetivo
+        users = [p.target_users for p in self.projects]
+        # Extraer todas las plataformas recomendadas (sin None)
+        platforms = [p.recommended_platform for p in self.projects if p.recommended_platform is not None]
+        # Ajustar los encoders para transformar texto a números
+        self.user_encoder.fit(users)
+        self.platform_encoder.fit(platforms)
 
-        # Encode the 'target_users' categorical feature
-        # fit_transform aprende las categorías únicas en los datos y las asigna a valores numéricos.
-        encoded_target_users = label_encoder.fit_transform([f[5] for f in features])
-        # Reemplaza la columna original de 'target_users' con sus valores codificados.
-        for i in range(len(features)):
-            features[i][5] = encoded_target_users[i]
+    def get_features_labels(self):
+        """
+        Devuelve las matrices X (características) e y (etiquetas) ya codificadas
+        para entrenar el modelo
+        """
+        X = []  # Lista de características para cada proyecto
+        y = []  # Lista de etiquetas codificadas (enteros)
+        for p in self.projects:
+            features = p.to_features()  # Convertir atributos a lista
+            # Codificar el atributo categórico target_users
+            features[-1] = self.user_encoder.transform([features[-1]])[0]
+            X.append(features)
+            # Si existe plataforma recomendada, codificarla y añadir a y
+            if p.recommended_platform is not None:
+                y.append(self.platform_encoder.transform([p.recommended_platform])[0])
+        return X, y
 
-        return np.array(features), np.array(labels)
+    def decode_platform(self, encoded_value: int) -> str:
+        """
+        Convierte un valor codificado de plataforma de vuelta a su nombre original
+        """
+        return self.platform_encoder.inverse_transform([encoded_value])[0]
 
+# Clase que encapsula el modelo de recomendación basado en árbol de decisión
 class PlatformRecommender:
-    """
-    Entrena un modelo de árbol de decisión para recomendar la plataforma de un proyecto.
-    """
     def __init__(self):
+        # Inicializar el clasificador de árbol de decisión
+        self.model = DecisionTreeClassifier()
+        # Referencia al dataset usado (necesaria para decodificar y encodificar)
+        self.dataset: Optional[ProjectDataset] = None
+
+    def train(self, dataset: ProjectDataset):
         """
-        Inicializa un nuevo objeto PlatformRecommender.
+        Entrena el modelo usando el dataset proporcionado
         """
-        self.model = DecisionTreeClassifier(random_state=42) # Inicializa un clasificador de árbol de decisión con un estado aleatorio fijo para reproducibilidad
-        self.label_encoder = LabelEncoder() # Inicializa un LabelEncoder para codificar y decodificar las etiquetas de la plataforma
-        self.trained = False # Bandera para indicar si el modelo ha sido entrenado
+        self.dataset = dataset
+        # Obtener características y etiquetas codificadas
+        X, y = dataset.get_features_labels()
+        # Ajustar el modelo a los datos
+        self.model.fit(X, y)
+        # (Opcional) Evaluar precisión en los datos de entrenamiento
+        preds = self.model.predict(X)
+        acc = accuracy_score(y, preds)
+        print(f"Training accuracy: {acc:.2f}")  # Mostrar precisión de entrenamiento
 
-    def train(self, dataset):
+    def predict(self, project: Project) -> str:
         """
-        Entrena el modelo de árbol de decisión utilizando los datos del dataset proporcionado.
-
-        Args:
-            dataset (ProjectDataset): El dataset que contiene los proyectos de entrenamiento.
+        Predice la plataforma recomendada para un proyecto nuevo
         """
-        features, labels = dataset.get_features_and_labels()
-        if labels.size > 0:
-            # Entrena el LabelEncoder con las etiquetas de la plataforma para poder decodificar las predicciones.
-            self.label_encoder.fit(labels)
-            # Codifica las etiquetas de la plataforma a valores numéricos para el entrenamiento del modelo.
-            encoded_labels = self.label_encoder.transform(labels)
-            # Entrena el modelo de árbol de decisión con las características y las etiquetas codificadas.
-            self.model.fit(features, encoded_labels)
-            self.trained = True
-        else:
-            print("Advertencia: No hay proyectos con plataforma recomendada para entrenar el modelo.")
+        if self.dataset is None:
+            raise ValueError("El modelo no ha sido entrenado.")
+        # Convertir atributos del proyecto a características numéricas
+        feats = project.to_features()
+        # Codificar el atributo target_users según el encoder entrenado
+        feats[-1] = self.dataset.user_encoder.transform([feats[-1]])[0]
+        # Hacer la predicción (valor entero)
+        pred = self.model.predict([feats])[0]
+        # Decodificar el entero de vuelta a la etiqueta original
+        return self.dataset.decode_platform(pred)
 
-    def predict(self, project):
-        """
-        Predice la plataforma recomendada para un nuevo proyecto.
+# Bloque de ejemplo de uso y prueba rápida
+if __name__ == "__main__":
+    # Definir un conjunto de proyectos de ejemplo con plataforma conocida
+    projects = [
+        Project("AppGlobal", 5, 25.0, 6, True, False, "global", "web"),
+        Project("IntranetCorp", 10, 40.0, 12, False, True, "empresa", "desktop"),
+        Project("LocalDelivery", 3, 20.0, 4, True, True, "local", "mobile"),
+        Project("CloudDashboard", 6, 50.0, 8, True, False, "empresa", "web"),
+        Project("OfflineTool", 4, 15.0, 6, False, True, "local", "desktop"),
+        Project("SocialBuzz", 2, 10.0, 3, True, False, "global", "mobile"),
+    ]
 
-        Args:
-            project (Project): El objeto Project para el cual se desea realizar la predicción.
+    # Proyecto nuevo sin plataforma definida
+    new_project = Project("AIChatApp", 4, 30.0, 5, True, False, "global")
 
-        Returns:
-            str or None: La plataforma recomendada ("web", "mobile", "desktop") o None si el modelo no ha sido entrenado.
-        """
-        if not self.trained:
-            print("Advertencia: El modelo no ha sido entrenado aún.")
-            return None
+    # Crear dataset y recomendador
+    dataset = ProjectDataset(projects)
+    recommender = PlatformRecommender()
 
-        # Codifica la variable categórica 'target_users' del nuevo proyecto usando el mismo encoder entrenado.
-        encoded_target_users = self.label_encoder.transform([project.target_users])[0]
-        # Prepara las características del nuevo proyecto en el mismo orden que se usó para el entrenamiento.
-        new_project_features = np.array([
-            project.user_interaction_frequency,
-            project.data_sensitivity,
-            project.development_complexity,
-            int(project.realtime_required),
-            int(project.needs_offline),
-            encoded_target_users
-        ]).reshape(1, -1) # Reshape a un array 2D con una fila y el número de características
+    # Entrenar el modelo
+    recommender.train(dataset)
 
-        # Realiza la predicción (la predicción estará en formato numérico codificado).
-        predicted_encoded = self.model.predict(new_project_features)[0]
-        # Decodifica la predicción numérica a la etiqueta de plataforma original.
-        return self.label_encoder.inverse_transform([predicted_encoded])[0]
-
-# Ejemplo de uso
-projects = [
-    Project("AppGlobal", 5, 25.0, 6, True, False, "global", "web"),
-    Project("IntranetCorp", 10, 40.0, 12, False, True, "empresa", "desktop"),
-    Project("LocalDelivery", 3, 20.0, 4, True, True, "local", "mobile"),
-    Project("CloudDashboard", 6, 50.0, 8, True, False, "empresa", "web"),
-    Project("OfflineTool", 4, 15.0, 6, False, True, "local", "desktop"),
-    Project("SocialBuzz", 2, 10.0, 3, True, False, "global", "mobile"),
-]
-
-new_project = Project("AIChatApp", 4, 30.0, 5, True, False, "global")
-
-dataset = ProjectDataset(projects)
-recommender = PlatformRecommender()
-recommender.train(dataset)
-
-prediction = recommender.predict(new_project)
-print(f"Plataforma recomendada: {prediction}")
-
-# Evaluación con diferentes ejemplos
-print("\nEvaluación con diferentes ejemplos:")
-test_projects = [
-    Project("WebAppV2", 7, 35.0, 9, True, False, "global"),
-    Project("DesktopToolPro", 9, 45.0, 11, False, True, "empresa"),
-    Project("CityGuideApp", 3, 18.0, 5, True, True, "local"),
-    Project("InternalAdmin", 8, 55.0, 10, True, False, "empresa"),
-    Project("FileSync", 5, 22.0, 7, False, True, "global"),
-    Project("TweetStorm", 1, 8.0, 2, True, False, "global"),
-    Project("RestaurantOrder", 4, 28.0, 6, True, True, "local"),
-    Project("HRPortal", 9, 42.0, 10, False, False, "empresa"),
-]
-
-for test_project in test_projects:
-    prediction = recommender.predict(test_project)
-    print(f"Proyecto: {test_project.name}, Plataforma recomendada: {prediction}")
+    # Obtener y mostrar la predicción para el nuevo proyecto
+    prediction = recommender.predict(new_project)
+    print(f"Plataforma recomendada: {prediction}")
