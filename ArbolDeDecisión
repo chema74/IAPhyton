@@ -1,0 +1,56 @@
+# Implementar una función en Python que entrene un árbol de decisión y lo use para hacer predicciones en un conjunto de datos.
+#
+# Instrucciones
+# Implementa una función llamada entrenar_arbol_decision(X_train, y_train, X_test) que:
+#
+# Entrene un árbol de decisión con los datos de entrenamiento X_train e y_train.
+# Prediga los valores de X_test.
+# Devuelva un array con las predicciones.
+# Usa DecisionTreeClassifier de sklearn.tree con random_state=42 para asegurar reproducibilidad.
+# No modifiques los parámetros de entrenamiento (como la profundidad del árbol o la función de división).
+# Prueba la función con un conjunto de datos real como el conjunto de datos de flores Iris.
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_iris
+from sklearn.metrics import accuracy_score
+import numpy as np
+
+def entrenar_arbol_decision(X_train, y_train, X_test):
+    """
+    Entrena un árbol de decisión y lo usa para hacer predicciones.
+
+    Args:
+        X_train (array-like): Datos de entrenamiento (características).
+        y_train (array-like): Etiquetas de entrenamiento.
+        X_test (array-like): Datos de prueba (características).
+
+    Returns:
+        np.ndarray: Un array con las predicciones para X_test.
+    """
+    # Inicializar el clasificador del árbol de decisión con random_state para reproducibilidad
+    arbol = DecisionTreeClassifier(random_state=42)
+
+    # Entrenar el árbol de decisión con los datos de entrenamiento
+    arbol.fit(X_train, y_train)
+
+    # Realizar predicciones en el conjunto de prueba
+    predicciones = arbol.predict(X_test)
+
+    return predicciones
+
+if __name__ == '__main__':
+    # Cargar el conjunto de datos Iris
+    iris = load_iris()
+    X, y = iris.data, iris.target
+
+    # Dividir los datos en conjuntos de entrenamiento y prueba
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    # Entrenar el árbol de decisión y obtener las predicciones
+    predicciones = entrenar_arbol_decision(X_train, y_train, X_test)
+
+    # Evaluar la precisión del modelo
+    precision = accuracy_score(y_test, predicciones)
+    print(f"Precisión del árbol de decisión en el conjunto de prueba: {precision:.2f}")
+    print("\nPrimeras 10 predicciones:", predicciones[:10])
+    print("Primeras 10 etiquetas reales:", y_test[:10])
