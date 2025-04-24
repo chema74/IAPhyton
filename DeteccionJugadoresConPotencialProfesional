@@ -1,0 +1,190 @@
+"""
+**Ejercicio: Detección de Jugadores con Potencial Profesional - Clasificación con SVM**
+
+**🧠 Contexto:**
+Imagina que trabajas en una plataforma de eSports y tu equipo está desarrollando un sistema de scouting para detectar jugadores con potencial profesional en base a sus estadísticas de juego.
+Tu tarea es construir un modelo de clasificación usando SVM (Support Vector Machine) que, dada la información de un jugador, prediga si tiene el perfil de jugador profesional (1) o no (0).
+
+**📋 Objetivo del ejercicio:**
+Implementar un clasificador que:
+* Use datos simulados de jugadores (partidas ganadas, horas jugadas, precisión, velocidad de reacción, estrategia).
+* Entrene un modelo de SVM con scikit-learn.
+* Clasifique a nuevos jugadores como "pro" o "casual".
+* Evalúe el modelo con métricas de precisión.
+
+**📁 Datos de entrada:**
+Cada jugador se representa con las siguientes características (todas normalizadas entre 0 y 1):
+* Partidas ganadas (Winning Rate)
+* Horas jugadas (Hours Played)
+* Precisión (Accuracy)
+* Velocidad de reacción (Reaction Time - lower is better, but normalized here so higher is better)
+* Estrategia (Game Sense/Strategy)
+
+**🧪 Ejemplo de datos:**
+(La clase GameSimulator genera estos datos)
+
+**Salida esperada (aproximada):**
+Jugador profesional:
+Precisión del modelo: 0.97
+
+Nuevo jugador (potencialmente profesional):
+  Estadísticas: [0.8  0.9  0.95 0.88 0.7 ]
+  Predicción: Profesional
+
+Nuevo jugador (potencialmente casual):
+  Estadísticas: [0.3  0.4  0.5  0.35 0.2 ]
+  Predicción: Casual
+
+**🛠️ Tareas a realizar:**
+Implementa la clase ProPlayerClassifier con los métodos:
+* train(X, y) para entrenar el modelo.
+* predict(player_stats) para predecir si un jugador es profesional.
+* evaluate(X_test, y_test) para evaluar la precisión del modelo.
+Usa sklearn.svm.SVC como modelo base.
+Prueba el modelo con al menos 2 predicciones distintas.
+Evalúa el rendimiento con accuracy_score.
+
+**🎯 Objetivo de aprendizaje:**
+Practicar con el algoritmo de máquinas de vector de soporte SVM
+"""
+import numpy as np  # Importa la biblioteca NumPy para operaciones numéricas y manejo de arrays.
+from sklearn.model_selection import train_test_split  # Importa la función para dividir datos en entrenamiento y prueba.
+from sklearn.svm import SVC  # Importa la clase SVC para implementar el modelo de Máquinas de Vectores de Soporte (SVM).
+from sklearn.metrics import accuracy_score  # Importa la función para calcular la precisión del modelo.
+
+class GameSimulator:
+    """Simula la generación de datos de jugadores de eSports."""
+    def __init__(self, n_casual=80, n_pro=20, random_state=42):
+        """
+        Inicializa el simulador de datos.
+
+        Args:
+            n_casual (int): Número de jugadores casuales a generar.
+            n_pro (int): Número de jugadores profesionales a generar.
+            random_state (int): Semilla para el generador de números aleatorios para reproducibilidad.
+        """
+        self.n_casual = n_casual
+        self.n_pro = n_pro
+        self.random_state = random_state
+        np.random.seed(self.random_state)  # Establece la semilla aleatoria para asegurar resultados consistentes.
+
+    def run(self):
+        """
+        Genera datos simulados de jugadores casuales y profesionales.
+
+        Returns:
+            tuple: Una tupla que contiene:
+                - X (np.ndarray): Matriz de características de todos los jugadores.
+                - y (np.ndarray): Vector de etiquetas (0 para casual, 1 para profesional).
+        """
+        # Genera datos aleatorios para jugadores casuales (etiqueta 0).
+        casual_ganadas = np.random.rand(self.n_casual) * 0.6  # Partidas ganadas (rango más bajo).
+        casual_horas = np.random.rand(self.n_casual) * 0.5  # Horas jugadas (rango más bajo).
+        casual_precision = np.random.rand(self.n_casual) * 0.7  # Precisión (rango moderado).
+        casual_reaccion = np.random.rand(self.n_casual) * 0.6  # Velocidad de reacción (rango moderado).
+        casual_estrategia = np.random.rand(self.n_casual) * 0.5  # Estrategia (rango más bajo).
+        casual_labels = np.zeros(self.n_casual)  # Asigna la etiqueta 0 (casual) a estos jugadores.
+
+        # Genera datos aleatorios para jugadores profesionales (etiqueta 1).
+        pro_ganadas = 0.4 + np.random.rand(self.n_pro) * 0.6  # Partidas ganadas (rango más alto).
+        pro_horas = 0.5 + np.random.rand(self.n_pro) * 0.5  # Horas jugadas (rango más alto).
+        pro_precision = 0.3 + np.random.rand(self.n_pro) * 0.7  # Precisión (rango más alto).
+        pro_reaccion = 0.4 + np.random.rand(self.n_pro) * 0.6  # Velocidad de reacción (rango más alto).
+        pro_estrategia = 0.5 + np.random.rand(self.n_pro) * 0.5  # Estrategia (rango más alto).
+        pro_labels = np.ones(self.n_pro)  # Asigna la etiqueta 1 (profesional) a estos jugadores.
+
+        # Combina las características de ambos tipos de jugadores en una sola matriz X.
+        X = np.vstack((
+            np.vstack((casual_ganadas, casual_horas, casual_precision, casual_reaccion, casual_estrategia)).T,
+            np.vstack((pro_ganadas, pro_horas, pro_precision, pro_reaccion, pro_estrategia)).T
+        ))
+        # Combina las etiquetas de ambos tipos de jugadores en un solo vector y.
+        y = np.concatenate((casual_labels, pro_labels))
+
+        return X, y  # Devuelve las características y las etiquetas generadas.
+
+class ProPlayerClassifier:
+    """Clasificador para detectar jugadores con potencial profesional usando SVM."""
+    def __init__(self, random_state=42):
+        """
+        Inicializa el clasificador SVM.
+
+        Args:
+            random_state (int): Semilla para el generador de números aleatorios del modelo para reproducibilidad.
+        """
+        self.model = SVC(kernel='rbf', random_state=random_state)  # Crea una instancia del modelo SVM con kernel RBF.
+
+    def train(self, X, y):
+        """
+        Entrena el modelo SVM con los datos proporcionados.
+
+        Args:
+            X (np.ndarray): Matriz de características de los jugadores.
+            y (np.ndarray): Vector de etiquetas (0 para casual, 1 para profesional).
+        """
+        self.model.fit(X, y)  # Entrena el modelo SVM utilizando los datos de entrenamiento.
+
+    def predict(self, player_stats: list) -> int:
+        """
+        Predice si un jugador es profesional basado en sus estadísticas.
+
+        Args:
+            player_stats (list): Una lista de 5 características del jugador
+                                 (partidas ganadas, horas jugadas, precisión,
+                                  velocidad de reacción, estrategia).
+
+        Returns:
+            int: 1 si el jugador se predice como profesional, 0 si no.
+        """
+        # Convierte la lista de estadísticas a un array de NumPy antes de usar reshape.
+        player_stats_np = np.array(player_stats)
+        # Realiza la predicción utilizando el modelo entrenado y redimensiona las estadísticas para que sean una sola muestra.
+        return self.model.predict(player_stats_np.reshape(1, -1))[0]
+
+    def evaluate(self, X_test, y_test):
+        """
+        Evalúa la precisión del modelo en un conjunto de prueba.
+
+        Args:
+            X_test (np.ndarray): Matriz de características del conjunto de prueba.
+            y_test (np.ndarray): Vector de etiquetas del conjunto de prueba.
+
+        Returns:
+            float: La precisión del modelo en el conjunto de prueba.
+        """
+        y_pred = self.model.predict(X_test)  # Realiza predicciones en el conjunto de prueba.
+        accuracy = accuracy_score(y_test, y_pred)  # Calcula la precisión comparando las predicciones con las etiquetas reales.
+        return accuracy  # Devuelve la precisión del modelo.
+
+# Ejemplo de uso (se ejecuta cuando el script se llama directamente)
+if __name__ == "__main__":
+    # Simular datos de jugadores utilizando la clase GameSimulator.
+    simulator = GameSimulator()
+    X, y = simulator.run()
+
+    # Dividir los datos generados en conjuntos de entrenamiento (70%) y prueba (30%).
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    # Crear una instancia del clasificador ProPlayerClassifier.
+    classifier = ProPlayerClassifier(random_state=42)
+
+    # Entrenar el clasificador utilizando los datos de entrenamiento.
+    classifier.train(X_train, y_train)
+
+    # Evaluar la precisión del modelo utilizando el conjunto de prueba y el método evaluate.
+    accuracy = classifier.evaluate(X_test, y_test)
+    print(f"Precisión del modelo: {accuracy:.2f}\n")
+
+    # Probar el clasificador con las estadísticas de un nuevo jugador (potencialmente profesional).
+    new_player_pro_list = [0.8, 0.9, 0.95, 0.88, 0.7]
+    prediction_pro = classifier.predict(new_player_pro_list)
+    print("Nuevo jugador (potencialmente profesional):")
+    print(f"  Estadísticas: {new_player_pro_list}")
+    print(f"  Predicción: {'Profesional' if prediction_pro == 1 else 'Casual'}\n")
+
+    # Probar el clasificador con las estadísticas de otro nuevo jugador (potencialmente casual).
+    new_player_casual_np = np.array([0.3, 0.4, 0.5, 0.35, 0.2])
+    prediction_casual = classifier.predict(new_player_casual_np.tolist()) # Se pasa como lista para demostrar la robustez.
+    print("Nuevo jugador (potencialmente casual):")
+    print(f"  Estadísticas: {new_player_casual_np.tolist()}")
+    print(f"  Predicción: {'Profesional' if prediction_casual == 1 else 'Casual'}\n")
